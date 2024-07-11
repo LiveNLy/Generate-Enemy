@@ -15,7 +15,7 @@ public class Spawner : MonoBehaviour
     private void Awake()
     {
         _pool = new ObjectPool<Enemy>(
-            actionOnGet: (enemy) => SetEnemy(enemy),
+            actionOnGet: (enemy) => SetEnemyTransformParameters(enemy),
             createFunc: () => Instantiate(_enemyPrefab),
             actionOnRelease: (enemy) => enemy.gameObject.SetActive(false),
             actionOnDestroy: (enemy) => Destroy(enemy),
@@ -26,13 +26,13 @@ public class Spawner : MonoBehaviour
 
     private void Start()
     {
-        FindSpawners();
         StartCoroutine(SpawnEnemy(_repeatRate));
     }
 
     public void ReleaseEnemy(Enemy enemy)
     {
         _pool.Release(enemy);
+        enemy.Releasing -= ReleaseEnemy;
     }
 
     private void GetEnemy()
@@ -40,11 +40,23 @@ public class Spawner : MonoBehaviour
         _pool.Get();
     }
 
-    private void SetEnemy(Enemy enemy)
+    private void SetEnemyTransformParameters(Enemy enemy)
     {
         enemy.transform.position = _spawnPoints[Random.Range(0, _spawnPoints.Length)].transform.position;
-        enemy.transform.rotation *= Quaternion.Euler(0, Random.Range(10, 360), 0);
         enemy.gameObject.SetActive(true);
+        enemy.StartMoving(SetRandomDirection().normalized);
+        enemy.Releasing += ReleaseEnemy;
+    }
+
+    private Vector3 SetRandomDirection()
+    {
+        float randomDirectionRange = 1f;
+        Vector3 directon = new Vector3();
+
+        directon.x = Random.Range(-randomDirectionRange, randomDirectionRange);
+        directon.z = Random.Range(-randomDirectionRange, randomDirectionRange);
+
+        return directon;
     }
 
     private IEnumerator SpawnEnemy(float seconds)
@@ -56,11 +68,5 @@ public class Spawner : MonoBehaviour
             GetEnemy();
             yield return wait;
         }
-    }
-
-    [ContextMenu(nameof(FindSpawners))]
-    private void FindSpawners()
-    {
-        _spawnPoints = GetComponentsInChildren<SpawnPoint>();
     }
 }
